@@ -1,0 +1,48 @@
+{
+  "name": "trading-agent-nextjs",
+  "version": "1.0.0",
+  "description": "NIFTY 50 Swing Trading Scanner - Next.js Edition",
+  "scripts": {
+    "dev": "node server.js",
+    "dev:ui": "next dev",
+    "build": "next build",
+    "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
+    "lint": "next lint",
+    "generate-token": "ts-node generate-token.ts",
+    "populate-nifty100": "ts-node populate-nifty100.ts",
+    "migrate-to-postgres": "ts-node migrate-to-postgres.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "cors": "^2.8.5",
+    "csvtojson": "^2.0.14",
+    "dotenv": "^16.3.1",
+    "kiteconnect": "^4.0.0",
+    "next": "^14.0.0",
+    "pg": "^8.20.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "socket.io": "^4.7.0",
+    "socket.io-client": "^4.8.3",
+    "technicalindicators": "^3.1.0",
+    "typescript": "^5.0.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.5.4",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.42.0",
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
+  }
+}
