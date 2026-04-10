@@ -1,5 +1,4 @@
 import { Pool, PoolClient } from "pg";
-require("dotenv").config({ path: ".env.postgres.local" });
 // PostgreSQL connection pool
 let pool: Pool | null = null;
 
@@ -47,7 +46,11 @@ export async function getClient(): Promise<PoolClient> {
 }
 
 // Initialize database schema
+let _dbInitialized = false;
 export async function initializeDatabase() {
+  if (_dbInitialized) return;
+  _dbInitialized = true;
+
   const client = await getClient();
 
   try {

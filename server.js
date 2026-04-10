@@ -4,7 +4,14 @@
  */
 
 // Load environment variables first
+// Priority: .env.local > .env.production (prod) or .env.development (dev) > .env
+const isProd = process.env.NODE_ENV === "production";
 require("dotenv").config({ path: ".env.local" });
+if (isProd) {
+  require("dotenv").config({ path: ".env.production" });
+} else {
+  require("dotenv").config({ path: ".env.development" });
+}
 require("dotenv").config({ path: ".env" });
 
 // Register tsconfig-paths first for alias resolution

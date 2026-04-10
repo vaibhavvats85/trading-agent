@@ -218,7 +218,9 @@ export function initializeDatabase() {
   return db;
 }
 
-// Initialize database on module load
-initializeDatabase();
+// Initialize database on module load (SQLite only — Postgres is awaited in server.js)
+if (process.env.DATABASE_TYPE !== "postgres") {
+  initializeDatabase();
+}
 
 export default db as Database.Database;
