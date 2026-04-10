@@ -10,7 +10,7 @@
     "start:prod": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "generate-token": "ts-node generate-token.ts",
-    "populate-nifty100": "ts-node populate-nifty100.ts",
+    "populate-nifty200": "ts-node populate-nifty200.ts",
     "migrate-to-postgres": "ts-node migrate-to-postgres.ts"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "cors": "^2.8.5",
     "csvtojson": "^2.0.14",
     "dotenv": "^16.3.1",
+    "flyctl": "^1.2.7",
     "kiteconnect": "^4.0.0",
     "next": "^14.0.0",
     "pg": "^8.20.0",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ScanResult, PlacePaperOrderRequest } from "@/lib/types";
 
 interface PlaceOrderModalProps {
@@ -8,7 +8,31 @@ interface PlaceOrderModalProps {
   stock: ScanResult | null;
   onClose: () => void;
   onPlaceOrder: (request: PlacePaperOrderRequest) => Promise<{ success: boolean; message: string }>;
+  totalCapital?: number;
   maxQty?: number;
+}
+
+function calcTradeParams(stock: ScanResult, orderType: "BUY" | "SELL", totalCapital?: number) {
+  const entry = stock.ltp;
+  const swingLow = stock.indicators?.recentSwingLow ?? 0;
+
+  let stopLoss: number;
+  if (orderType === "BUY") {
+    const useSwingLow =
+      swingLow > 0 && swingLow < entry && (entry - swingLow) / entry <= 0.1;
+    stopLoss = useSwingLow ? swingLow : entry * 0.97;
+  } else {
+    stopLoss = entry * 1.03;
+  }
+
+  const risk = Math.abs(entry - stopLoss);
+  const target =
+    orderType === "BUY" ? entry + 2 * risk : entry - 2 * risk;
+
+  const allocation = totalCapital ? totalCapital / 4 : 0;
+  const qty = allocation > 0 ? Math.floor(allocation / entry) : 1;
+
+  return { stopLoss, target, qty };
 }
 
 export default function PlaceOrderModal({
@@ -16,6 +40,7 @@ export default function PlaceOrderModal({
   stock,
   onClose,
   onPlaceOrder,
+  totalCapital,
   maxQty = 1000,
 }: PlaceOrderModalProps) {
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
@@ -23,8 +48,16 @@ export default function PlaceOrderModal({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Recalculate whenever the modal opens or order type changes
+  useEffect(() => {
+    if (!stock) return;
+    const { qty } = calcTradeParams(stock, orderType, totalCapital);
+    setQuantity(String(qty > 0 ? qty : 1));
+  }, [stock, orderType, totalCapital]);
+
   if (!isOpen || !stock) return null;
 
+  const { stopLoss, target } = calcTradeParams(stock, orderType, totalCapital);
   const qty = parseInt(quantity) || 0;
   const totalAmount = qty * stock.ltp;
 
@@ -38,12 +71,15 @@ export default function PlaceOrderModal({
     }
 
     setLoading(true);
+    const { stopLoss: sl, target: tgt } = calcTradeParams(stock, orderType, totalCapital);
     const result = await onPlaceOrder({
       symbol: stock.symbol,
       orderType,
       quantity: qty,
       pricePerUnit: stock.ltp,
       signalType: stock.signal,
+      stopLoss: sl,
+      target: tgt,
     });
 
     setLoading(false);
@@ -100,10 +136,28 @@ export default function PlaceOrderModal({
 
           {/* Content */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Current Price */}
+            {/* Current Price + Trade Params */}
             <div className="mb-4 pb-4 border-b border-gray-700">
               <p className="text-sm text-gray-400 mb-1">Current Price</p>
               <p className="text-2xl font-bold text-blue-400">₹{stock.ltp.toFixed(2)}</p>
+            </div>
+
+            {/* Pre-calculated SL / Target */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <p className="text-xs text-gray-400 mb-0.5">Stop Loss</p>
+                <p className="text-sm font-bold text-red-400">₹{stopLoss.toFixed(2)}</p>
+                <p className="text-xs text-gray-500">
+                  {(Math.abs(stock.ltp - stopLoss) / stock.ltp * 100).toFixed(1)}% away
+                </p>
+              </div>
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                <p className="text-xs text-gray-400 mb-0.5">Target (2R)</p>
+                <p className="text-sm font-bold text-green-400">₹{target.toFixed(2)}</p>
+                <p className="text-xs text-gray-500">
+                  {(Math.abs(target - stock.ltp) / stock.ltp * 100).toFixed(1)}% away
+                </p>
+              </div>
             </div>
 
             {/* Order Type */}

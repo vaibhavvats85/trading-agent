@@ -4,9 +4,15 @@ import { computeIndicators } from "@/lib/indicators/indicators";
 import { swingStrategy } from "@/lib/strategies/swing";
 import { pullbackStrategy } from "@/lib/strategies/pullbackStrategy";
 import { breakoutMomentumStrategy } from "@/lib/strategies/breakoutMomentum";
+import { filterByQuote, filterByCandles, filterByIndicators } from "@/lib/scanner/stockFilter";
 import { Instrument, StrategyConfig } from "@/lib/types";
 import * as dbIndex from "@/lib/db/index";
 import { STRATEGIES } from "@/lib/strategies/registry";
+
+// Symbols with earnings/results announcements within the next 5 days.
+// Populate this Set from NSE corporate calendar or a third-party source.
+// Example: UPCOMING_EARNINGS.add("INFY"); UPCOMING_EARNINGS.add("TCS");
+const UPCOMING_EARNINGS = new Set<string>();
 
 // Map strategy id -> evaluator function (add new strategies here)
 const strategyEvaluators: Record<string, (ind: any, state: null, config: StrategyConfig) => string> = {
@@ -17,6 +23,7 @@ const strategyEvaluators: Record<string, (ind: any, state: null, config: Strateg
 
 // NIFTY 100 symbols will be loaded from database
 let SYMBOLS: string[] = [];
+let symbolToIndustryMap: Record<string, string | null> = {};
 
 // Default strategy configuration
 const strategyConfig: StrategyConfig = {
@@ -69,12 +76,16 @@ let instrumentsCacheTime = 0;
 const INSTRUMENTS_CACHE_DURATION = 3600000; // Cache instruments for 1 hour
 
 export async function runScan(): Promise<any[]> {
-  // Step 1: Load NIFTY100 symbols from database
+  // Step 1: Load NIFTY100 symbols and industry from database
   if (SYMBOLS.length === 0) {
     try {
       const dbInstruments = await dbIndex.getInstruments();
       if (dbInstruments && dbInstruments.length > 0) {
         SYMBOLS = dbInstruments.map((inst) => inst.symbol);
+        // Map symbols to industries
+        dbInstruments.forEach((inst) => {
+          symbolToIndustryMap[inst.symbol] = inst.industry || null;
+        });
         console.log(`[Instruments] Loaded ${SYMBOLS.length} NIFTY100 symbols from database`);
       } else {
         console.error("❌ [Instruments] Database is empty - NIFTY100 list not available");
@@ -89,6 +100,10 @@ export async function runScan(): Promise<any[]> {
       throw new Error(`Cannot load NIFTY100 symbols: ${error.message}`);
     }
   }
+
+  // Step 1b: always scan all Nifty100 symbols — sector filtering is applied
+  // as a post-step in the API route after the full results are known.
+  const symbolsToScan = SYMBOLS;
 
   console.log(
     "\n╔════════════════════════════════════════════════════════════╗",
@@ -128,11 +143,11 @@ export async function runScan(): Promise<any[]> {
       console.log("[Instruments] Using cached NSE instruments");
     }
 
-    // Step 3: Build token map for ONLY NIFTY100 stocks
+    // Step 3: Build token map for sector-filtered stocks
     const nifty100TokenMap: Record<string, number> = {};
     if (cachedInstruments) {
       cachedInstruments.forEach((inst) => {
-        if (SYMBOLS.includes(inst.tradingsymbol)) {
+        if (symbolsToScan.includes(inst.tradingsymbol)) {
           nifty100TokenMap[inst.tradingsymbol] = inst.instrument_token;
         }
       });
@@ -142,7 +157,7 @@ export async function runScan(): Promise<any[]> {
       throw new Error("No NIFTY100 instruments found in NSE list");
     }
 
-    console.log(`📡 Fetching quotes for ${SYMBOLS.length} NIFTY100 stocks only...\n`);
+    console.log(`📡 Fetching quotes for ${symbolsToScan.length} stocks...\n`);
 
     // Step 4: Fetch quotes for ONLY NIFTY100 tokens with rate limiting
     const nifty100Tokens = Object.values(nifty100TokenMap);
@@ -178,9 +193,23 @@ export async function runScan(): Promise<any[]> {
 
     console.log(`✅ Retrieved quotes for ${Object.keys(quotesMap).length} NIFTY100 stocks\n`);
 
-    // Step 5: Fetch historical data with concurrency limit
+    // Step 5: Quote-level filter — price range only, runs BEFORE historical fetch
+    const filteredTokenMap = Object.entries(nifty100TokenMap).filter(([sym, token]) => {
+      const quote = quotesMap[token];
+      if (!quote) return false;
+      const ltp = quote.last_price || 0;
+      const result = filterByQuote(ltp);
+      if (!result.passed) {
+        console.log(`⏭  ${sym.padEnd(12)} SKIPPED — ${result.reason}`);
+      }
+      return result.passed;
+    });
+
+    console.log(`📊 ${filteredTokenMap.length}/${Object.keys(nifty100TokenMap).length} stocks passed price filter\n`);
+
+    // Step 6: Fetch historical data with concurrency limit (only price-filtered stocks)
     const historicalDataResults = await processConcurrent(
-      Object.entries(nifty100TokenMap),
+      filteredTokenMap,
       async ([sym, token]) => ({
         symbol: sym,
         token,
@@ -207,8 +236,22 @@ export async function runScan(): Promise<any[]> {
         const ltp = quote.last_price || 0;
         const ohlc = quote.ohlc || { open: 0, high: 0, low: 0, close: 0 };
 
+        // Candle-level filter — gap > 5% in last 5 days, or upcoming earnings
+        const candleFilter = filterByCandles(symbol, historicalData, UPCOMING_EARNINGS);
+        if (!candleFilter.passed) {
+          console.log(`⏭  ${symbol.padEnd(12)} SKIPPED — ${candleFilter.reason}`);
+          continue;
+        }
+
         // Compute indicators
         const ind = computeIndicators(historicalData);
+
+        // Indicator-level filter — liquidity check using 20-day avg volume / turnover
+        const indFilter = filterByIndicators(ind);
+        if (!indFilter.passed) {
+          console.log(`⏭  ${symbol.padEnd(12)} SKIPPED — ${indFilter.reason}`);
+          continue;
+        }
 
         // Generate signal using all registered strategies
         const strategySignals = STRATEGIES.map((s) => {
@@ -228,6 +271,7 @@ export async function runScan(): Promise<any[]> {
 
         const result = {
           symbol,
+          industry: symbolToIndustryMap[symbol] || undefined,
           ltp,
           change,
           changePercent,

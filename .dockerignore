@@ -1,0 +1,13 @@
+.git
+.next
+node_modules
+.env
+.env.local
+.env*.local
+*.md
+docs/
+.data/
+*.sqlite
+*.db
+.DS_Store
+npm-debug.log*

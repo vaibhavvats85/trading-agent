@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import kite from "@/config/kite";
+import { getKite } from "@/config/kite";
 import { isMarketOpen } from "@/lib/utils/marketHours";
 
 export async function GET() {
   try {
+    const kite = getKite();
     const marketOpen = isMarketOpen();
 
     let holdings, positions;

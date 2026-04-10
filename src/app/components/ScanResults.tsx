@@ -20,7 +20,7 @@ export default function ScanResults() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<ScanResult | null>(null);
-  const { placeOrder } = usePaperTrading();
+  const { placeOrder, account } = usePaperTrading();
 
   const fetchScanResults = async () => {
     try {
@@ -347,6 +347,7 @@ export default function ScanResults() {
         stock={selectedStock}
         onClose={handleCloseOrderModal}
         onPlaceOrder={handlePlaceOrder}
+        totalCapital={account?.totalCapital}
       />
     </div>
   );

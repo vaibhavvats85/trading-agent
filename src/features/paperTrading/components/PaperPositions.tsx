@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { PaperPosition } from "@/lib/types";
 
 interface PaperPositionsDisplayProps {
@@ -16,6 +16,28 @@ export default function PaperPositions({
 }: PaperPositionsDisplayProps) {
   const [closingPositionId, setClosingPositionId] = useState<string | null>(null);
   const [closePrices, setClosePrices] = useState<Record<string, string>>({});
+  /** positions whose price just changed — cleared after 800ms */
+  const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
+  const prevPricesRef = useRef<Record<string, number>>({});
+
+  // Detect price changes and trigger a brief yellow flash
+  useEffect(() => {
+    const newFlash = new Set<string>();
+    positions.forEach((p) => {
+      if (
+        prevPricesRef.current[p.id] !== undefined &&
+        prevPricesRef.current[p.id] !== p.currentPrice
+      ) {
+        newFlash.add(p.id);
+      }
+      prevPricesRef.current[p.id] = p.currentPrice;
+    });
+
+    if (newFlash.size === 0) return;
+    setFlashIds(newFlash);
+    const timer = setTimeout(() => setFlashIds(new Set()), 800);
+    return () => clearTimeout(timer);
+  }, [positions]);
 
   const handleCloseClick = async (positionId: string) => {
     const price = closePrices[positionId];
@@ -71,6 +93,7 @@ export default function PaperPositions({
             {positions.map((position) => {
               const isPositive = position.pnl >= 0;
               const isClosing = closingPositionId === position.id;
+              const isFlashing = flashIds.has(position.id);
 
               return (
                 <tr
@@ -82,18 +105,18 @@ export default function PaperPositions({
                   <td className="px-6 py-4 text-right text-gray-400">
                     ₹{position.entryPrice.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4 text-right text-gray-400">
+                  <td className={`px-6 py-4 text-right font-semibold transition-colors duration-300 ${isFlashing ? "text-yellow-300" : "text-gray-300"}`}>
                     ₹{position.currentPrice.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-right text-gray-400">
                     ₹{position.invested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </td>
-                  <td className="px-6 py-4 text-right text-gray-400">
+                  <td className={`px-6 py-4 text-right font-semibold transition-colors duration-300 ${isFlashing ? "text-yellow-300" : "text-gray-300"}`}>
                     ₹{position.current.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </td>
                   <td
-                    className={`px-6 py-4 text-right font-semibold ${
-                      isPositive ? "text-green-400" : "text-red-400"
+                    className={`px-6 py-4 text-right font-semibold transition-colors duration-300 ${
+                      isFlashing ? "text-yellow-300" : isPositive ? "text-green-400" : "text-red-400"
                     }`}
                   >
                     {isPositive ? "+" : ""}
@@ -107,7 +130,14 @@ export default function PaperPositions({
                   <td className="px-6 py-4 text-center">
                     {!isClosing ? (
                       <button
-                        onClick={() => setClosingPositionId(position.id)}
+                        onClick={() => {
+                          setClosingPositionId(position.id);
+                          // Pre-fill with live current price
+                          setClosePrices((prev) => ({
+                            ...prev,
+                            [position.id]: position.currentPrice.toFixed(2),
+                          }));
+                        }}
                         disabled={isLoading}
                         className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 disabled:opacity-50 text-red-400 rounded text-sm font-semibold transition-colors"
                       >

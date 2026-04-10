@@ -24,6 +24,7 @@ export interface Indicators {
   ema20: number;        // 20-period EMA
   volume: number;       // Latest candle volume
   avgVolume20: number;  // 20-day average volume
+  avgTurnover20: number; // 20-day average traded value (close × volume), in ₹
   high20: number;       // 20-day highest close (consolidation ceiling)
 }
 
@@ -100,6 +101,7 @@ export interface Holding {
   current: number;
   pnl: number;
   pnlPercent: string;
+  prevClose: number;
   openPrice: number;
   todayPnl: number;
   todayPnlPercent: string;
@@ -133,6 +135,7 @@ export interface StrategySignal {
 
 export interface ScanResult {
   symbol: string;
+  industry?: string;
   ltp: number;
   change: number;
   changePercent: string;
@@ -225,6 +228,8 @@ export interface PlacePaperOrderRequest {
   quantity: number;
   pricePerUnit: number;
   signalType?: Signal;
+  stopLoss?: number;
+  target?: number;
 }
 
 export interface ClosePaperPositionRequest {

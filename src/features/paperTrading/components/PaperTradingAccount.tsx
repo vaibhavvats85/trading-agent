@@ -6,12 +6,16 @@ interface PaperTradingAccountDisplayProps {
   account: PaperTradingAccount;
   onRefresh?: () => Promise<void>;
   isRefreshing?: boolean;
+  isLive?: boolean;
+  lastUpdateTime?: Date | null;
 }
 
 export default function PaperTradingAccount({ 
   account, 
   onRefresh,
-  isRefreshing = false 
+  isRefreshing = false,
+  isLive = false,
+  lastUpdateTime = null,
 }: PaperTradingAccountDisplayProps) {
   if (!account) {
     return <div className="p-4 text-gray-400">Loading account data...</div>;
@@ -43,13 +47,28 @@ export default function PaperTradingAccount({
         </div>
 
         <div>
-          <p className="text-gray-400 text-sm">Total P&L</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-gray-400 text-sm">Total P&L</p>
+            {isLive ? (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block" />
+                LIVE
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-600/30 text-gray-500 border border-gray-600/30">
+                DELAYED
+              </span>
+            )}
+          </div>
           <p className={`text-lg font-bold ${isPositiveReturn ? "text-green-400" : "text-red-400"}`}>
             ₹{(account.totalPnl || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </p>
           <p className={`text-xs ${isPositiveReturn ? "text-green-400" : "text-red-400"}`}>
             {isPositiveReturn ? "+" : ""}
             {account.totalPnlPercent}%
+            {lastUpdateTime && (
+              <span className="text-gray-500 ml-1">· {lastUpdateTime.toLocaleTimeString()}</span>
+            )}
           </p>
         </div>
 

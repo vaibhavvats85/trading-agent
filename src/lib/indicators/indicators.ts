@@ -3,7 +3,6 @@ import { Candle, Indicators } from "@/lib/types";
 
 export function computeIndicators(candles: Candle[]): Indicators {
   const closes = candles.map((c) => c.close);
-  const highs = candles.map((c) => c.high);
   const lows = candles.map((c) => c.low);
   const volumes = candles.map((c) => c.volume);
 
@@ -17,6 +16,10 @@ export function computeIndicators(candles: Candle[]): Indicators {
 
   // 20-day average volume
   const avgVolume20Arr = SMA.calculate({ values: volumes, period: 20 });
+
+  // 20-day average traded value (₹ turnover = close × volume per day)
+  const dailyTurnover = closes.map((c, i) => c * (volumes[i] ?? 0));
+  const avgTurnover20Arr = SMA.calculate({ values: dailyTurnover, period: 20 });
 
   // 20-day highest close (consolidation ceiling for breakout)
   const recentCloses = closes.slice(-21, -1); // previous 20 closes (excluding today)
@@ -38,6 +41,7 @@ export function computeIndicators(candles: Candle[]): Indicators {
     ema20: ema20[ema20.length - 1] ?? 0,
     volume: volumes[volumes.length - 1] ?? 0,
     avgVolume20: avgVolume20Arr[avgVolume20Arr.length - 1] ?? 0,
+    avgTurnover20: avgTurnover20Arr[avgTurnover20Arr.length - 1] ?? 0,
     high20,
     recentSwingLow,
     isPullback,

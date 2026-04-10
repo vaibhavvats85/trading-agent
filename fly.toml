@@ -1,0 +1,26 @@
+app = "trading-agent"         # change this to your chosen app name
+primary_region = "sin"        # Singapore — closest to Indian markets. Can use "bom" if available.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false   # keep always-on (important for KiteTicker WebSocket)
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"       # free tier VM
+  memory = "256mb"
+
+[env]
+  NODE_ENV = "production"
+  DATABASE_TYPE = "postgres"
+  # NEXT_PUBLIC_API_URL is set via fly secrets (includes your app URL)

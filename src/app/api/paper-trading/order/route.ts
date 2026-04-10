@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { placePaperOrder, getPaperTradingAccount } from "@/lib/trading/paperTrading";
 import type { PlacePaperOrderRequest } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as PlacePaperOrderRequest;
+    const userId = headers().get("x-kite-user-id") ?? "";
 
-    const account = await getPaperTradingAccount();
-    const result = await placePaperOrder(account, body);
+    const account = await getPaperTradingAccount(userId);
+    const result = await placePaperOrder(userId, account, body);
 
     if (!result.success) {
       return NextResponse.json(

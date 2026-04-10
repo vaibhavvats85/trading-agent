@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import kite from "@/config/kite";
+import { getKite } from "@/config/kite";
 
 export async function GET() {
   try {
-    const positions = await kite.getPositions();
+    const positions = await getKite().getPositions();
 
     return NextResponse.json({
       success: true,

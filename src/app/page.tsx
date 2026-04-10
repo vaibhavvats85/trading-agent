@@ -14,8 +14,24 @@ export default function Home() {
   const { isConnected, portfolio, summary, error, loading } = useSocket();
   const { account, loading: paperLoading, resetAccount, closePosition, refreshAccount } = usePaperTrading();
   
-  // Use live positions with real-time prices
-  const { positions: livePositions, refreshPrices } = usePaperPositionPrices(account?.positions || []);
+  // Use live positions with real-time prices via WebSocket
+  const { positions: livePositions, isLive, lastUpdateTime, refreshPrices } = usePaperPositionPrices(account?.positions || []);
+
+  // Derive live account totals from real-time position data
+  const liveAccount = account
+    ? {
+        ...account,
+        totalPnl: livePositions.reduce((sum, p) => sum + p.pnl, 0),
+        totalPnlPercent:
+          account.totalCapital > 0
+            ? (
+                (livePositions.reduce((sum, p) => sum + p.pnl, 0) /
+                  account.totalCapital) *
+                100
+              ).toFixed(2)
+            : "0.00",
+      }
+    : null;
 
   const handleClosePosition = async (positionId: string, closePrice: number) => {
     await closePosition(positionId, closePrice);
@@ -129,7 +145,11 @@ export default function Home() {
             )}
 
             {/* Scan Results Tab */}
-            {activeTab === "scan" && <ScanResults />}
+            {activeTab === "scan" && (
+              <div className="space-y-6">
+                <ScanResults />
+              </div>
+            )}
 
             {/* Paper Trading Tab */}
             {activeTab === "paper-trading" && (
@@ -140,9 +160,11 @@ export default function Home() {
                   <>
                     {/* Account Overview */}
                     <PaperTradingAccount 
-                      account={account} 
+                      account={liveAccount ?? account} 
                       onRefresh={handleRefresh}
                       isRefreshing={isRefreshing}
+                      isLive={isLive}
+                      lastUpdateTime={lastUpdateTime}
                     />
 
                     {/* Control Button */}

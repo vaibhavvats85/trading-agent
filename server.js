@@ -29,16 +29,16 @@ const { initializeSocket } = require("./src/lib/socket/init.ts");
 const { initializeDatabase } = require("./src/lib/db/init.ts");
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = dev ? "localhost" : "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
 // Create Next.js app
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
-  // Initialize database first
-  initializeDatabase();
+app.prepare().then(async () => {
+  // Initialize database first (await so tables exist before serving requests)
+  await initializeDatabase();
 
   const httpServer = createServer(async (req, res) => {
     try {

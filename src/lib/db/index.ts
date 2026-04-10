@@ -33,54 +33,54 @@ async function loadDatabaseService(): Promise<DatabaseService> {
 }
 
 // Export functions that delegate to the appropriate service
-export async function getAccount() {
+export async function getAccount(userId: string) {
   const service = await loadDatabaseService();
-  return service.getAccount();
+  return service.getAccount(userId);
 }
 
-export async function updateAccountBalances(investedAmt: number, totalPnl: number) {
+export async function updateAccountBalances(userId: string, investedAmt: number, totalPnl: number) {
   const service = await loadDatabaseService();
-  return service.updateAccountBalances(investedAmt, totalPnl);
+  return service.updateAccountBalances(userId, investedAmt, totalPnl);
 }
 
-export async function addPosition(position: any) {
+export async function addPosition(userId: string, position: any) {
   const service = await loadDatabaseService();
-  return service.addPosition(position);
+  return service.addPosition(userId, position);
 }
 
-export async function updatePositionPrice(positionId: string, currentPrice: number) {
+export async function updatePositionPrice(userId: string, positionId: string, currentPrice: number) {
   const service = await loadDatabaseService();
-  return service.updatePositionPrice(positionId, currentPrice);
+  return service.updatePositionPrice(userId, positionId, currentPrice);
 }
 
-export async function closePosition(positionId: string, exitPrice: number) {
+export async function closePosition(userId: string, positionId: string, exitPrice: number) {
   const service = await loadDatabaseService();
-  return service.closePosition(positionId, exitPrice);
+  return service.closePosition(userId, positionId, exitPrice);
 }
 
-export async function createOrder(order: any) {
+export async function createOrder(userId: string, order: any) {
   const service = await loadDatabaseService();
-  return service.createOrder(order);
+  return service.createOrder(userId, order);
 }
 
-export async function getPositionHistory(limit?: number) {
+export async function getPositionHistory(userId: string, limit?: number) {
   const service = await loadDatabaseService();
-  return service.getPositionHistory(limit);
+  return service.getPositionHistory(userId, limit);
 }
 
-export async function getAccountStats() {
+export async function getAccountStats(userId: string) {
   const service = await loadDatabaseService();
-  return service.getAccountStats();
+  return service.getAccountStats(userId);
 }
 
-export async function resetAccount() {
+export async function resetAccount(userId: string) {
   const service = await loadDatabaseService();
-  return service.resetAccount();
+  return service.resetAccount(userId);
 }
 
-export async function getOpenOrders() {
+export async function getOpenOrders(userId: string) {
   const service = await loadDatabaseService();
-  return service.getOpenOrders();
+  return service.getOpenOrders(userId);
 }
 
 export async function insertInstruments(instruments: any[]) {
@@ -103,6 +103,16 @@ export async function getInstrumentCount() {
   return service.getInstrumentCount();
 }
 
+export async function upsertPrevCloseMap(map: Record<string, number>, date: string) {
+  const service = await loadDatabaseService();
+  return service.upsertPrevCloseMap(map, date);
+}
+
+export async function getPrevCloseMap(date: string): Promise<Record<string, number>> {
+  const service = await loadDatabaseService();
+  return service.getPrevCloseMap(date);
+}
+
 export default {
   getAccount,
   updateAccountBalances,
@@ -118,4 +128,6 @@ export default {
   getInstruments,
   getInstrumentsBySymbols,
   getInstrumentCount,
+  upsertPrevCloseMap,
+  getPrevCloseMap,
 };

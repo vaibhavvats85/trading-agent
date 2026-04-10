@@ -2,17 +2,17 @@ import axios from "axios";
 import csv from "csvtojson";
 
 /**
- * Fetch NIFTY 100 constituents from the official CSV URL
+ * Fetch NIFTY 200 constituents from the official CSV URL
  */
-export async function fetchNifty100Constituents(): Promise<
+export async function fetchNifty200Constituents(): Promise<
   Array<{ symbol: string; name: string; industry?: string; weight?: number }>
 > {
   try {
-    console.log("📥 Fetching NIFTY 100 constituents from CSV...");
+    console.log("📥 Fetching NIFTY 200 constituents from CSV...");
 
     // Fetch the CSV file
     const response = await axios.get(
-      "https://www.niftyindices.com/IndexConstituent/ind_nifty100list.csv",
+      "https://www.niftyindices.com/IndexConstituent/ind_nifty200list.csv",
       {
         timeout: 10000,
         headers: {
@@ -84,7 +84,7 @@ export async function fetchNifty100Constituents(): Promise<
         console.error(`   HTTP Status: ${error.response.status}`);
       }
     } else {
-      console.error(`❌ Error fetching NIFTY 100 constituents:`, error);
+      console.error(`❌ Error fetching NIFTY 200 constituents:`, error);
     }
     throw error;
   }

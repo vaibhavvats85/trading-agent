@@ -12,9 +12,9 @@ const INITIAL_CAPITAL = 1000000; // 10 lakhs for paper trading
  * Initialize or get the paper trading account from database
  * Server-side only
  */
-export async function initializePaperTradingAccount(): Promise<PaperTradingAccount> {
+export async function initializePaperTradingAccount(userId: string): Promise<PaperTradingAccount> {
   try {
-    return await dbIndex.getAccount();
+    return await dbIndex.getAccount(userId);
   } catch (error) {
     console.error("Error initializing paper trading account:", error);
     // Fallback account structure
@@ -33,14 +33,15 @@ export async function initializePaperTradingAccount(): Promise<PaperTradingAccou
 /**
  * Get the current paper trading account
  */
-export async function getPaperTradingAccount(): Promise<PaperTradingAccount> {
-  return initializePaperTradingAccount();
+export async function getPaperTradingAccount(userId: string): Promise<PaperTradingAccount> {
+  return initializePaperTradingAccount(userId);
 }
 
 /**
  * Place a paper trading order
  */
 export async function placePaperOrder(
+  userId: string,
   account: PaperTradingAccount,
   request: PlacePaperOrderRequest
 ): Promise<{ success: boolean; message?: string; order?: PaperOrder; account?: PaperTradingAccount }> {
@@ -73,7 +74,7 @@ export async function placePaperOrder(
     };
 
     // Create order in database
-    await dbIndex.createOrder(order);
+    await dbIndex.createOrder(userId, order);
 
     // Update positions based on order type
     let updatedAccount = { ...account };
@@ -118,7 +119,7 @@ export async function placePaperOrder(
           updatedAt: new Date().toISOString(),
         };
         updatedAccount.positions.push(position);
-        await dbIndex.addPosition(position);
+        await dbIndex.addPosition(userId, position);
       }
 
       // Deduct from available balance
@@ -151,7 +152,7 @@ export async function placePaperOrder(
       if (position.quantity === quantity) {
         // Close entire position
         updatedAccount.positions.splice(positionIndex, 1);
-        await dbIndex.closePosition(position.id, pricePerUnit);
+        await dbIndex.closePosition(userId, position.id, pricePerUnit);
       } else {
         // Partial sell
         const newPosition = {
@@ -163,7 +164,7 @@ export async function placePaperOrder(
           updatedAt: new Date().toISOString(),
         };
         updatedAccount.positions[positionIndex] = newPosition as PaperPosition;
-        await dbIndex.updatePositionPrice(position.id, position.currentPrice);
+        await dbIndex.updatePositionPrice(userId, position.id, position.currentPrice);
       }
 
       updatedAccount.availableBalance += sellProceeds;
@@ -179,7 +180,7 @@ export async function placePaperOrder(
     updatedAccount.totalPnlPercent = totalPnlPercent;
 
     // Update database
-    await dbIndex.updateAccountBalances(totalInvested, totalPnl);
+    await dbIndex.updateAccountBalances(userId, totalInvested, totalPnl);
 
     return {
       success: true,
@@ -199,6 +200,7 @@ export async function placePaperOrder(
  * Update position prices (called when real-time prices update)
  */
 export async function updatePaperPositionPrices(
+  userId: string,
   account: PaperTradingAccount,
   priceUpdates: Record<string, number>
 ): Promise<PaperTradingAccount> {
@@ -213,7 +215,7 @@ export async function updatePaperPositionPrices(
     totalPnl += newPnl;
 
     // Update in database (fire and forget)
-    dbIndex.updatePositionPrice(position.id, newPrice).catch((error) => {
+    dbIndex.updatePositionPrice(userId, position.id, newPrice).catch((error) => {
       console.error("Error updating position price:", error);
     });
 
@@ -233,7 +235,7 @@ export async function updatePaperPositionPrices(
 
   // Update database
   try {
-    await dbIndex.updateAccountBalances(updatedAccount.investedAmount, totalPnl);
+    await dbIndex.updateAccountBalances(userId, updatedAccount.investedAmount, totalPnl);
   } catch (error) {
     console.error("Error updating account balances:", error);
   }
@@ -245,6 +247,7 @@ export async function updatePaperPositionPrices(
  * Close a specific position
  */
 export async function closePaperPosition(
+  userId: string,
   account: PaperTradingAccount,
   positionId: string,
   closePrice: number
@@ -276,10 +279,10 @@ export async function closePaperPosition(
     updatedAccount.positions.splice(positionIndex, 1);
 
     // Close position in database
-    await dbIndex.closePosition(positionId, closePrice);
+    await dbIndex.closePosition(userId, positionId, closePrice);
 
     // Update account balances
-    await dbIndex.updateAccountBalances(updatedAccount.investedAmount, updatedAccount.totalPnl);
+    await dbIndex.updateAccountBalances(userId, updatedAccount.investedAmount, updatedAccount.totalPnl);
 
     return {
       success: true,
@@ -297,9 +300,9 @@ export async function closePaperPosition(
 /**
  * Reset paper trading account to initial state
  */
-export async function resetPaperTradingAccount(): Promise<PaperTradingAccount> {
+export async function resetPaperTradingAccount(userId: string): Promise<PaperTradingAccount> {
   try {
-    await dbIndex.resetAccount();
+    await dbIndex.resetAccount(userId);
     return {
       totalCapital: INITIAL_CAPITAL,
       availableBalance: INITIAL_CAPITAL,

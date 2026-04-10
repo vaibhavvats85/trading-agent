@@ -42,7 +42,10 @@ export default function PortfolioTable({ holdings }: PortfolioTableProps) {
           <tbody>
             {holdings.map((holding, idx) => {
               const pnl = typeof holding.pnl === "number" ? holding.pnl : 0;
+              // Use server-computed todayPnl: (currentPrice - prevClose) × quantity
               const todayPnl = typeof holding.todayPnl === "number" ? holding.todayPnl : 0;
+              const todayPnlPercent =
+                typeof holding.todayPnlPercent === "string" ? holding.todayPnlPercent : "0.00";
               const isPositive = pnl >= 0;
               const isDayPositive = todayPnl >= 0;
 
@@ -119,10 +122,7 @@ export default function PortfolioTable({ holdings }: PortfolioTableProps) {
                     <br />
                     <span className="text-xs">
                       {isDayPositive ? "+" : ""}
-                      {typeof holding.todayPnlPercent === "string"
-                        ? holding.todayPnlPercent
-                        : "0"}
-                      %
+                      {todayPnlPercent}%
                     </span>
                   </td>
                 </tr>

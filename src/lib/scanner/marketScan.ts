@@ -10,7 +10,9 @@ export interface MarketScanResult {
   signal: MarketSignal;
   close: number;
   dma200: number;
-  distancePercent: string; // how far close is from 200 DMA (+ or -)
+  dma50: number;
+  distancePercent200: string; // how far close is from 200 DMA (+ or -)
+  distancePercent50: string;  // how far close is from 50 DMA (+ or -)
 }
 
 export async function runMarketScan(): Promise<MarketScanResult> {
@@ -27,13 +29,22 @@ export async function runMarketScan(): Promise<MarketScanResult> {
   }
 
   const closes = candles.map((c: any) => c.close);
-  const dmaWindow = Math.min(closes.length, 200);
-  const last200Closes = closes.slice(-dmaWindow);
-  const dma200 = last200Closes.reduce((sum: number, v: number) => sum + v, 0) / dmaWindow;
+  
+  // Calculate 200 DMA
+  const dma200Window = Math.min(closes.length, 200);
+  const last200Closes = closes.slice(-dma200Window);
+  const dma200 = last200Closes.reduce((sum: number, v: number) => sum + v, 0) / dma200Window;
+  
+  // Calculate 50 DMA
+  const dma50Window = Math.min(closes.length, 50);
+  const last50Closes = closes.slice(-dma50Window);
+  const dma50 = last50Closes.reduce((sum: number, v: number) => sum + v, 0) / dma50Window;
+  
   const close = closes[closes.length - 1];
 
   const signal: MarketSignal = close > dma200 ? "GREEN" : "RED";
-  const distancePercent = (((close - dma200) / dma200) * 100).toFixed(2);
+  const distancePercent200 = (((close - dma200) / dma200) * 100).toFixed(2);
+  const distancePercent50 = (((close - dma50) / dma50) * 100).toFixed(2);
 
-  return { signal, close, dma200, distancePercent };
+  return { signal, close, dma200, dma50, distancePercent200, distancePercent50 };
 }

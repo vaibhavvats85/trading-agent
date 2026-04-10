@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { getPaperTradingAccount } from "@/lib/trading/paperTrading";
 
 export async function GET() {
   try {
-    const account = await getPaperTradingAccount();
+    const userId = headers().get("x-kite-user-id") ?? "";
+    const account = await getPaperTradingAccount(userId);
     return NextResponse.json({
       success: true,
       data: account,

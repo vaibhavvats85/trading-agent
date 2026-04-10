@@ -57,6 +57,15 @@ export function useSocket(): UseSocketResult {
       setLoading(false);
     });
 
+    socketInstance.on("auth-required", () => {
+      console.warn("🔐 Kite token expired – redirecting to logout");
+      socketInstance.disconnect();
+      // The cookie is httpOnly, so JS cannot clear it directly.
+      // Hit the server-side logout endpoint which clears the cookie and
+      // redirects to /login.
+      window.location.href = "/api/logout";
+    });
+
     socketInstance.on("error", (err: any) => {
       console.error("❌ WebSocket error:", err);
       setError(err.message || "Connection error");

@@ -6,22 +6,28 @@
 
 import { initializeDatabase } from "./src/lib/db/init";
 import * as dbIndex from "./src/lib/db/index";
-import { fetchNifty100Constituents } from "./src/lib/utils/nifty100";
+import { fetchNifty200Constituents } from "./src/lib/utils/nifty200";
 
 async function main() {
   try {
-    console.log("\n╔════════════════════════════════════════════════════════════╗");
-    console.log("║     NIFTY 100 Constituents Database Populator             ║");
-    console.log("╚════════════════════════════════════════════════════════════╝\n");
+    console.log(
+      "\n╔════════════════════════════════════════════════════════════╗",
+    );
+    console.log(
+      "║     NIFTY 200 Constituents Database Populator             ║",
+    );
+    console.log(
+      "╚════════════════════════════════════════════════════════════╝\n",
+    );
 
     // Initialize database
     console.log("🗄️  Initializing database...");
     initializeDatabase();
     console.log("✓ Database initialized\n");
 
-    // Fetch NIFTY 100 constituents
-    console.log("📥 Fetching NIFTY 100 constituents from CSV...");
-    const instruments = await fetchNifty100Constituents();
+    // Fetch NIFTY 200 constituents
+    console.log("📥 Fetching NIFTY 200 constituents from CSV...");
+    const instruments = await fetchNifty200Constituents();
 
     if (instruments.length === 0) {
       throw new Error("No instruments found in CSV");
@@ -44,12 +50,16 @@ async function main() {
     instruments.slice(0, 10).forEach((inst) => {
       const weight = inst.weight ? ` (${inst.weight.toFixed(2)}%)` : "";
       const industry = inst.industry ? ` - ${inst.industry}` : "";
-      console.log(`  • ${inst.symbol.padEnd(12)} | ${inst.name}${industry}${weight}`);
+      console.log(
+        `  • ${inst.symbol.padEnd(12)} | ${inst.name}${industry}${weight}`,
+      );
     });
     if (instruments.length > 10) {
       console.log(`  ... and ${instruments.length - 10} more`);
     }
-    console.log("═══════════════════════════════════════════════════════════\n");
+    console.log(
+      "═══════════════════════════════════════════════════════════\n",
+    );
 
     console.log("✅ NIFTY 100 constituents successfully loaded into database!");
     process.exit(0);

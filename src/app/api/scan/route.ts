@@ -1,68 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runScan } from "@/lib/scanner/scan";
-import { DEFAULT_STRATEGY } from "@/lib/strategies/registry";
-
-// Per-strategy cache
-const scanCache: Record<string, { results: any[]; time: number }> = {};
-const SCAN_CACHE_DURATION = 30000; // Cache for 30 seconds
+import { getScanResults } from "@/lib/db/service-postgres";
+import { filterToTopSectors } from "@/lib/scanner/sectorRank";
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const fresh = searchParams.get("fresh") === "true";
-    const strategy = searchParams.get("strategy") || DEFAULT_STRATEGY;
-    const now = Date.now();
+    const filterSectors = searchParams.get("filterSectors") === "true";
 
-    const cache = scanCache[strategy];
-    let results = cache?.results ?? [];
+    let results = await getScanResults();
 
-    // Force fresh scan if requested or cache expired
-    if (fresh || !cache || now - cache.time > SCAN_CACHE_DURATION) {
-      try {
-        results = await runScan();
-        scanCache[strategy] = { results, time: now };
-        console.log(`[API] Fresh scan [${strategy}]: ${results.length} stocks`);
-      } catch (scanError: any) {
-        console.error(`[API] Scan error [${strategy}]: ${scanError.message}`);
-        if (!results.length) {
-          // Return error if no cache available
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Scan temporarily unavailable: ${scanError.message}`,
-              cached: false,
-            },
-            { status: 503 }
-          );
-        }
-        // Use cached results as fallback
-        console.log(`[API] Returning cached results as fallback`);
-      }
-    } else {
-      const remainingSeconds = Math.round(
-        (SCAN_CACHE_DURATION - (now - cache.time)) / 1000
+    if (results.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: "No scan data available. Please trigger a manual scan first.",
+        data: [],
+      }, { status: 404 });
+    }
+
+    if (filterSectors) {
+      const topSymbols = await filterToTopSectors(
+        results.map((r: any) => ({ symbol: r.symbol, ltp: r.ltp, ema50: r.ema50 }))
       );
-      console.log(`[API] Returning cached scan [${strategy}] (${remainingSeconds}s remaining)`);
+      if (topSymbols.size > 0) {
+        results = results.filter((r: any) => topSymbols.has(r.symbol));
+      }
     }
 
     return NextResponse.json({
-      strategy,
       success: true,
       data: results,
       timestamp: new Date().toISOString(),
-      cached: !!(cache && now - cache.time <= SCAN_CACHE_DURATION),
+      cached: false,
+      filtered: filterSectors,
     });
   } catch (error: any) {
-    console.error("[API] Scan endpoint error:", error);
-    const errorMessage = error?.message || "Internal server error";
-    
-    // Return proper JSON error response
+    console.error("[API] Scan GET error:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
+      { success: false, error: error?.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
+

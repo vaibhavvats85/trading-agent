@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { closePaperPosition, getPaperTradingAccount } from "@/lib/trading/paperTrading";
 import type { ClosePaperPositionRequest } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ClosePaperPositionRequest;
+    const userId = headers().get("x-kite-user-id") ?? "";
 
-    const account = await getPaperTradingAccount();
-    const result = await closePaperPosition(account, body.positionId, body.currentPrice);
+    const account = await getPaperTradingAccount(userId);
+    const result = await closePaperPosition(userId, account, body.positionId, body.currentPrice);
 
     if (!result.success) {
       return NextResponse.json(

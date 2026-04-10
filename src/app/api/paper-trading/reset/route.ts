@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { resetPaperTradingAccount } from "@/lib/trading/paperTrading";
 
 export async function POST() {
   try {
-    const account = await resetPaperTradingAccount();
+    const userId = headers().get("x-kite-user-id") ?? "";
+    const account = await resetPaperTradingAccount(userId);
 
     return NextResponse.json({
       success: true,
